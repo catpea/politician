@@ -1,0 +1,27 @@
+{
+  "type": "module",
+  "name": "politician",
+  "version": "1.0.0",
+  "description": "A bureaucratic test framework with the gravitas of 1980s government documentation. Designed for tests that are as easy to write as they are beautiful to read.",
+  "main": "index.js",
+  "scripts": {
+    "save": "git add .; git commit -m 'Updated Release'; npm version patch; npm publish; git push --follow-tags;",
+    "test": "node --test",
+    "prepublishOnly": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/catpea/politician.git"
+  },
+  "keywords": [],
+  "author": "catpea (https://github.com/catpea)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/catpea/politician/issues"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/catpea"
+  },
+  "homepage": "https://github.com/catpea/politician#readme"
+}
