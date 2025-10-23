@@ -48,13 +48,15 @@ class TestSuite {
   header() {
     if (this.verbosity < VERBOSITY_LEVELS.NORMAL) return this;
 
-    console.log('\n╔═══════════════════════════════════════════════════════════════════════════════╗');
-    console.log(`║ ${this._pad(this.metadata.classification, 77)} ║`);
-    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣');
-    console.log(`║ TEST REPORT: ${this._pad(this.name, 62)} ║`);
-    console.log(`║ Document ID: ${this._pad(this.metadata.documentId, 62)} ║`);
-    console.log(`║ Date: ${this._pad(this.metadata.date, 70)} ║`);
-    console.log('╚═══════════════════════════════════════════════════════════════════════════════╝\n');
+    console.log('\n');
+    console.log('╔═══════════════════════════════════════════════════════════════════════════════╗ ');
+    console.log(`║ ${this._pad(this.metadata.classification, 77)} ║ `);
+    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣ ');
+    console.log(`║ TEST REPORT: ${this._pad(this.name, 64)} ║ `);
+    console.log(`║ Document ID: ${this._pad(this.metadata.documentId, 64)} ║ `);
+    console.log(`║ Date: ${this._pad(this.metadata.date, 71)} ║ `);
+    console.log('╚═══════════════════════════════════════════════════════════════════════════════╝ ');
+    console.log('\n');
 
     return this;
   }
@@ -89,7 +91,7 @@ class TestSuite {
     if (this.verbosity < VERBOSITY_LEVELS.VERBOSE) return this;
 
     if (label) {
-      console.log(`\n┌─[ ${label} ]${'─'.repeat(Math.max(0, 77 - label.length))}`);
+      console.log(`\n┌─[ ${label} ]${'─'.repeat(Math.max(0, 74 - label.length))}`);
     }
     console.log(`\`\`\`${language}`);
     console.log(content.trim());
@@ -204,23 +206,25 @@ class TestSuite {
     const failed = this.failures.length;
     const passRate = total > 0 ? ((passed / total) * 100).toFixed(2) : 0;
 
-    console.log('\n╔═══════════════════════════════════════════════════════════════════════════════╗');
-    console.log('║ TEST SUMMARY                                                                  ║');
-    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣');
-    console.log(`║ Total Tests:     ${this._pad(String(total), 62)} ║`);
-    console.log(`║ Passed:          ${this._pad(String(passed), 62)} ║`);
-    console.log(`║ Failed:          ${this._pad(String(failed), 62)} ║`);
-    console.log(`║ Pass Rate:       ${this._pad(`${passRate}%`, 62)} ║`);
-    console.log(`║ Duration:        ${this._pad(`${duration}ms`, 62)} ║`);
-    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣');
+    console.log('\n');
+    console.log('╔═══════════════════════════════════════════════════════════════════════════════╗ ');
+    console.log('║ TEST SUMMARY                                                                  ║ ');
+    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣ ');
+    console.log(`║ Total Tests:     ${this._pad(String(total), 60)} ║ `);
+    console.log(`║ Passed:          ${this._pad(String(passed), 60)} ║ `);
+    console.log(`║ Failed:          ${this._pad(String(failed), 60)} ║ `);
+    console.log(`║ Pass Rate:       ${this._pad(`${passRate}%`, 60)} ║ `);
+    console.log(`║ Duration:        ${this._pad(`${duration}ms`, 60)} ║ `);
+    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣ ');
 
     if (failed === 0) {
-      console.log('║ STATUS: \x1b[32mALL TESTS PASSED\x1b[0m                                                     ║');
+      console.log('║ STATUS: \x1b[32mALL TESTS PASSED\x1b[0m                                                     ║ ');
     } else {
-      console.log(`║ STATUS: \x1b[31m${failed} TEST(S) FAILED\x1b[0m                                                    ║`);
+      console.log(`║ STATUS: \x1b[31m${failed} TEST(S) FAILED\x1b[0m                                                      ║ `);
     }
 
-    console.log('╚═══════════════════════════════════════════════════════════════════════════════╝\n');
+    console.log('╚═══════════════════════════════════════════════════════════════════════════════╝ ');
+    console.log('\n');
 
     if (this.verbosity >= VERBOSITY_LEVELS.VERBOSE && failed > 0) {
       console.log('FAILED TESTS:');
