@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "politician",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A bureaucratic test framework with the gravitas of 1980s government documentation. Designed for tests that are as easy to write as they are beautiful to read.",
   "main": "index.js",
   "scripts": {
