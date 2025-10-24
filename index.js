@@ -12,6 +12,11 @@
  * Supports configurable verbosity and generates print-ready markdown reports.
  */
 
+import { argv } from 'node:process';
+import { Reporter } from './reporters/superclass.js';
+import { TerminalReporter } from './reporters/terminal.js';
+import { MarkdownReporter } from './reporters/markdown.js';
+
 // ──────────────────────────────────────────────────────────────────────────────
 // SECTION 1: CONFIGURATION AND STATE MANAGEMENT
 // ──────────────────────────────────────────────────────────────────────────────
@@ -24,6 +29,30 @@ const VERBOSITY_LEVELS = {
   DEBUG: 4        // Everything including debug info
 };
 
+// Parse format from command line arguments
+function parseFormat() {
+  const formatArg = argv.find(arg => arg.startsWith('--format='));
+  if (formatArg) {
+    const format = formatArg.split('=')[1];
+    return format;
+  }
+  return 'terminal'; // Default format
+}
+
+// Create appropriate reporter based on format
+function createReporter(format, metadata) {
+  switch (format) {
+    case 'markdown':
+      return new MarkdownReporter(metadata);
+    case 'terminal':
+      return new TerminalReporter(metadata);
+    case 'ascii':
+      return new Reporter(metadata);
+    default:
+      return new TerminalReporter(metadata);
+  }
+}
+
 class TestSuite {
   constructor(name, options = {}) {
     this.name = name;
@@ -33,12 +62,17 @@ class TestSuite {
     this.failures = [];
     this.successes = [];
     this.startTime = Date.now();
-    this.metadata = {
+
+    const metadata = {
       date: new Date().toISOString().split('T')[0],
       classification: options.classification ?? 'UNCLASSIFIED',
-      documentId: options.documentId ?? `TEST-${Date.now()}`,
+      documentId: options.documentId ?? `PTF-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
       ...options.metadata
     };
+
+    // Create reporter based on format option or auto-detect from argv
+    const format = options.format ?? parseFormat();
+    this.reporter = options.reporter ?? createReporter(format, metadata);
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -47,17 +81,7 @@ class TestSuite {
 
   header() {
     if (this.verbosity < VERBOSITY_LEVELS.NORMAL) return this;
-
-    console.log('\n');
-    console.log('╔═══════════════════════════════════════════════════════════════════════════════╗ ');
-    console.log(`║ ${this._pad(this.metadata.classification, 77)} ║ `);
-    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣ ');
-    console.log(`║ TEST REPORT: ${this._pad(this.name, 64)} ║ `);
-    console.log(`║ Document ID: ${this._pad(this.metadata.documentId, 64)} ║ `);
-    console.log(`║ Date: ${this._pad(this.metadata.date, 71)} ║ `);
-    console.log('╚═══════════════════════════════════════════════════════════════════════════════╝ ');
-    console.log('\n');
-
+    this.reporter.header(this.name);
     return this;
   }
 
@@ -66,20 +90,14 @@ class TestSuite {
 
     this.sectionNumber++;
     this.testNumber = 0;
-    console.log(`\n${'═'.repeat(80)}`);
-    console.log(`SECTION ${this.sectionNumber}: ${title}`);
-    console.log(`${'═'.repeat(80)}\n`);
+    this.reporter.section(this.sectionNumber, title);
 
     return this;
   }
 
   subsection(title) {
     if (this.verbosity < VERBOSITY_LEVELS.NORMAL) return this;
-
-    console.log(`\n${'─'.repeat(80)}`);
-    console.log(`${this.sectionNumber}.${this.testNumber + 1} ${title}`);
-    console.log(`${'─'.repeat(80)}\n`);
-
+    this.reporter.subsection(this.sectionNumber, this.testNumber + 1, title);
     return this;
   }
 
@@ -89,19 +107,7 @@ class TestSuite {
 
   code(language, content, label = null) {
     if (this.verbosity < VERBOSITY_LEVELS.VERBOSE) return this;
-
-    if (label) {
-      console.log(`\n┌─[ ${label} ]${'─'.repeat(Math.max(0, 74 - label.length))}`);
-    }
-    console.log(`\`\`\`${language}`);
-    console.log(content.trim());
-    console.log('```');
-    if (label) {
-      console.log(`└${'─'.repeat(79)}\n`);
-    } else {
-      console.log('');
-    }
-
+    this.reporter.code(language, content, label);
     return this;
   }
 
@@ -145,19 +151,12 @@ class TestSuite {
     if (result.passed) {
       this.successes.push(result);
       if (this.verbosity >= VERBOSITY_LEVELS.VERBOSE) {
-        console.log(`\x1b[32m✓ TEST ${testId} PASSED\x1b[0m: ${description}`);
+        this.reporter.testPassed(testId, description);
       }
     } else {
       this.failures.push(result);
       if (this.verbosity >= VERBOSITY_LEVELS.QUIET) {
-        console.log(`\x1b[31m✗ TEST ${testId} FAILED\x1b[0m: ${description}`);
-        if (result.message) {
-          console.log(`  Reason: ${result.message}`);
-        }
-        if (result.expected !== null && result.actual !== null) {
-          console.log(`  Expected: ${JSON.stringify(result.expected)}`);
-          console.log(`  Actual:   ${JSON.stringify(result.actual)}`);
-        }
+        this.reporter.testFailed(testId, description, result);
       }
     }
 
@@ -206,33 +205,11 @@ class TestSuite {
     const failed = this.failures.length;
     const passRate = total > 0 ? ((passed / total) * 100).toFixed(2) : 0;
 
-    console.log('\n');
-    console.log('╔═══════════════════════════════════════════════════════════════════════════════╗ ');
-    console.log('║ TEST SUMMARY                                                                  ║ ');
-    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣ ');
-    console.log(`║ Total Tests:     ${this._pad(String(total), 60)} ║ `);
-    console.log(`║ Passed:          ${this._pad(String(passed), 60)} ║ `);
-    console.log(`║ Failed:          ${this._pad(String(failed), 60)} ║ `);
-    console.log(`║ Pass Rate:       ${this._pad(`${passRate}%`, 60)} ║ `);
-    console.log(`║ Duration:        ${this._pad(`${duration}ms`, 60)} ║ `);
-    console.log('╠═══════════════════════════════════════════════════════════════════════════════╣ ');
-
-    if (failed === 0) {
-      console.log('║ STATUS: \x1b[32mALL TESTS PASSED\x1b[0m                                                     ║ ');
-    } else {
-      console.log(`║ STATUS: \x1b[31m${failed} TEST(S) FAILED\x1b[0m                                                      ║ `);
-    }
-
-    console.log('╚═══════════════════════════════════════════════════════════════════════════════╝ ');
-    console.log('\n');
+    const stats = { total, passed, failed, passRate, duration };
+    this.reporter.summary(stats);
 
     if (this.verbosity >= VERBOSITY_LEVELS.VERBOSE && failed > 0) {
-      console.log('FAILED TESTS:');
-      this.failures.forEach(f => {
-        console.log(`  [${f.id}] ${f.description}`);
-        if (f.message) console.log(`       ${f.message}`);
-      });
-      console.log('');
+      this.reporter.failureDetails(this.failures);
     }
 
     return failed === 0;
@@ -244,44 +221,51 @@ class TestSuite {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
-  // SUBSECTION 1.6: Utility Methods
+  // SUBSECTION 1.6: Differential Analysis
   // ────────────────────────────────────────────────────────────────────────────
 
-  _pad(str, length) {
-    return str + ' '.repeat(Math.max(0, length - str.length));
+  diff(expected, actual, label = null) {
+    if (this.verbosity >= VERBOSITY_LEVELS.VERBOSE) {
+      this.reporter.diff(expected, actual, label);
+    }
+    return this;
   }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // SUBSECTION 1.7: Utility Methods
+  // ────────────────────────────────────────────────────────────────────────────
 
   log(...args) {
     if (this.verbosity >= VERBOSITY_LEVELS.VERBOSE) {
-      console.log(...args);
+      this.reporter.log(...args);
     }
     return this;
   }
 
   info(...args) {
     if (this.verbosity >= VERBOSITY_LEVELS.NORMAL) {
-      console.log(`\x1b[34mℹ ${args.join(' ')}\x1b[0m`);
+      this.reporter.info(...args);
     }
     return this;
   }
 
   warn(...args) {
     if (this.verbosity >= VERBOSITY_LEVELS.NORMAL) {
-      console.log(`\x1b[33m⚠ ${args.join(' ')}\x1b[0m`);
+      this.reporter.warn(...args);
     }
     return this;
   }
 
   error(...args) {
     if (this.verbosity >= VERBOSITY_LEVELS.QUIET) {
-      console.log(`\x1b[31m✗ ${args.join(' ')}\x1b[0m`);
+      this.reporter.error(...args);
     }
     return this;
   }
 
   success(...args) {
     if (this.verbosity >= VERBOSITY_LEVELS.VERBOSE) {
-      console.log(`\x1b[32m✓ ${args.join(' ')}\x1b[0m`);
+      this.reporter.success(...args);
     }
     return this;
   }
